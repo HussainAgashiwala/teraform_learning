@@ -9,6 +9,7 @@ variable env_prefix {}
 variable my_ip {}
 variable instance_type {}
 variable public_key_location {}
+variable private_key_location{}
 
 resource "aws_vpc" "myapp-vpc" {
   cidr_block =var.vpc_cidr_block
@@ -103,7 +104,25 @@ resource "aws_instance" "myapp-server"{
   associate_public_ip_address=true
   key_name=aws_key_pair.ssh-key.key_name
 
-  user_data=file("entrypoint-script.sh")
+  //user_data=file("entrypoint-script.sh")
+
+  connection {
+    type="ssh"
+    user="ec2-user"
+    host=self.public_ip
+    private_key=file(var.private_key_location)
+  }
+  provisioner "file"{
+    source="entrypoint-script.sh"
+    destination="/home/ec2-user/entrypoint-script-on-ec2.sh"
+  }
+  provisioner "remote-exec"{
+    script=file("entrypoint-script-on-ec2.sh")
+  }
+  provisioner "local-exec"{
+    commands="echo ${self.public_ip} > output.txt"
+  }
+
   tags={
     Name="${var.env_prefix}-server"
   }
